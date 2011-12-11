@@ -1379,10 +1379,12 @@ extract_dollar_brace_string (string, sindex, quoted, flags)
   slen = strlen (string + *sindex) + *sindex;
 
   /* The handling of dolbrace_state needs to agree with the code in parse.y:
-     parse_matched_pair() */
-  dolbrace_state = 0;
-  if (quoted & (Q_HERE_DOCUMENT|Q_DOUBLE_QUOTES))
-    dolbrace_state = (flags & SX_POSIXEXP) ? DOLBRACE_QUOTE : DOLBRACE_PARAM;
+     parse_matched_pair().  The different initial value is to handle the
+     case where this function is called to parse the word in
+     ${param op word} (SX_WORD). */
+  dolbrace_state = (flags & SX_WORD) ? DOLBRACE_WORD : DOLBRACE_PARAM;
+  if ((quoted & (Q_HERE_DOCUMENT|Q_DOUBLE_QUOTES)) && (flags & SX_POSIXEXP))
+    dolbrace_state = DOLBRACE_QUOTE;
 
   i = *sindex;
   while (c = string[i])
@@ -3371,7 +3373,7 @@ expand_string_for_rhs (string, quoted, dollar_at_p, has_dollar_at)
   if (string == 0 || *string == '\0')
     return (WORD_LIST *)NULL;
 
-  td.flags = 0;
+  td.flags = W_NOSPLIT2;		/* no splitting, remove "" and '' */
   td.word = string;
   tresult = call_expand_word_internal (&td, quoted, 1, dollar_at_p, has_dollar_at);
   return (tresult);
@@ -3704,7 +3706,10 @@ remove_quoted_nulls (string)
 	    break;
 	}
       else if (string[i] == CTLNUL)
-	i++;
+	{
+	  i++;
+	  continue;
+	}
 
       prev_i = i;
       ADVANCE_CHAR (string, slen, i);
@@ -4607,6 +4612,7 @@ expand_word_unsplit (word, quoted)
   if (ifs_firstc == 0)
 #endif
     word->flags |= W_NOSPLIT;
+  word->flags |= W_NOSPLIT2;
   result = call_expand_word_internal (word, quoted, 0, (int *)NULL, (int *)NULL);
   expand_no_split_dollar_star = 0;
 
@@ -7176,7 +7182,7 @@ parameter_brace_expand (string, indexp, quoted, pflags, quoted_dollar_atp, conta
     {
       /* Extract the contents of the ${ ... } expansion
 	 according to the Posix.2 rules. */
-      value = extract_dollar_brace_string (string, &sindex, quoted, (c == '%' || c == '#') ? SX_POSIXEXP : 0);
+      value = extract_dollar_brace_string (string, &sindex, quoted, (c == '%' || c == '#' || c =='/' || c == '^' || c == ',' || c ==':') ? SX_POSIXEXP|SX_WORD : SX_WORD);
       if (string[sindex] == RBRACE)
 	sindex++;
       else
