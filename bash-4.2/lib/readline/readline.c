@@ -550,6 +550,8 @@ readline_internal_charloop ()
 
       lastc = c;
       _rl_dispatch ((unsigned char)c, _rl_keymap);
+
+      rl_whispering_hook();
       RL_CHECK_SIGNALS ();
 
       /* If there was no change in _rl_last_command_was_kill, then no kill

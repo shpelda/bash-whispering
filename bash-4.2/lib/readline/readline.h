@@ -72,6 +72,7 @@ typedef struct _funmap {
 
 extern FUNMAP **funmap;
 
+extern void rl_whispering_hook(void);
 /* **************************************************************** */
 /*								    */
 /*	     Functions available to bind to key sequences	    */
